@@ -1,0 +1,128 @@
+import express from 'express';
+import nodemailer from 'nodemailer';
+import multer from 'multer';
+import cors from 'cors';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { toBuffer } from 'bwip-js';
+// import https from 'https';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const app = express();
+const port = 3000;
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+});
+
+// Enable CORS
+//app.use(cors({
+//  origin: ['https://localhost:5173', 'https://motorclub.cl', 'https://54.158.82.101'],
+//  methods: ['GET', 'POST'],
+//  allowedHeaders: ['Content-Type', 'Authorization']
+//}));
+
+// Configure nodemailer
+const transporter = nodemailer.createTransport({
+  host: "sandbox.smtp.mailtrap.io",
+  port: 2525,
+  auth: {
+    user: "bd180a25c60f02",
+    pass: "8f9632a04ecd46"
+  }
+});
+
+// Contact form endpoint
+app.post('/api/contact', upload.array('documents'), async (req, res) => {
+  try {
+    // Parse the JSON string in req.body.data to an actual JavaScript object
+    const formData = JSON.parse(req.body.data);
+
+    // Destructure the values from the parsed formData
+    const {
+      company: { rut: companyRut, name: companyName, address: companyAddress, businessType },
+      legalRepresentative: { name: repName, rut: repRut },
+      applicant: { name: applicantName, phone: applicantPhone, email: applicantEmail }
+    } = formData;
+
+    const emailContent = `
+      <h2>Solicitud Creacion Tienda Motorclub</h2>
+      
+      <h3>Datos de la Empresa</h3>
+      <p>RUT Empresa: ${companyRut}</p>
+      <p>Razón Social: ${companyName}</p>
+      <p>Dirección: ${companyAddress}</p>
+      <p>Giro: ${businessType}</p>
+      
+      <h3>Representante Legal</h3>
+      <p>Nombre Completo: ${repName}</p>
+      <p>RUT: ${repRut}</p>
+      
+      <h3>Datos del Solicitante</h3>
+      <p>Nombre Completo: ${applicantName}</p>
+      <p>Teléfono: ${applicantPhone}</p>
+      <p>Email: ${applicantEmail}</p>
+    `;
+
+    const mailOptions = {
+      from: 'no-reply@yourdomain.com',
+      to: 'admin@yourdomain.com',
+      subject: 'Solicitud nuevo vendedor',
+      html: emailContent,
+      attachments: req.files?.map(file => ({
+        filename: file.originalname,
+        content: file.buffer
+      }))
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true, message: 'Email sent successfully' });
+  } catch (error) {
+    console.error('Email sending failed:', error);
+    res.status(500).json({ success: false, message: 'Failed to send email' });
+  }
+});
+
+// QR code endpoint
+app.get('/api/barcode', (req, res) => {
+  const { id } = req.query;
+
+  if (!id) {
+    return res.status(400).json({ error: 'ID is required' });
+  }
+
+  toBuffer({
+    bcid: 'qrcode', // Changed from code128 to qrcode
+    text: id.toString(),
+    scale: 4,        // Adjusted scale for QR codes
+    includetext: false, // QR codes don't need human readable text
+    eclevel: 'M',    // Error correction level (L,M,Q,H)
+    padding: 10      // Padding around the QR code
+  }, (err, png) => {
+    if (err) {
+      console.error('QR code generation error:', err);
+      return res.status(500).json({ error: 'Error generating QR code' });
+    }
+
+    res.setHeader('Content-Type', 'image/png');
+    res.send(png);
+  });
+});
+
+// Use HTTPS instead of HTTP
+//const options = {
+//  key: fs.readFileSync('/home/ubuntu/mi_proyecto/private.key'),
+//  cert: fs.readFileSync('/home/ubuntu/mi_proyecto/certificate.crt'),
+//  passphrase: 'motorclub2025'
+//};
+
+http.createServer(options, app).listen(port, () => {
+  console.log(`Server running at https://localhost:${port}`);
+});
