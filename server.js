@@ -22,18 +22,18 @@ const upload = multer({
 
 // Enable CORS
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://motorclub.cl'],
+  origin: ['http://localhost:5173', 'https://onkids.cl'],
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Configure nodemailer
 const transporter = nodemailer.createTransport({
-  host: "live.smtp.mailtrap.io",
+  host: "sandbox.smtp.mailtrap.io",
   port: 2525,
   auth: {
-    user: "api",
-    pass: "56b6d10d27de60a48d481589d3966c61"
+    user: "a2a81712e4053b",
+    pass: "43cfccaf71e915"
   }
 });
 
@@ -63,8 +63,8 @@ app.post('/api/contact', upload.array('documents'), async (req, res) => {
     `;
 
     const mailOptions = {
-      from: 'info@motorclub.cl',
-      to: 'info@motorclub.cl',
+      from: 'contacto@onkids.cl',
+      to: 'contacto@onkids.cl',
       subject: 'Solicitud nuevo vendedor',
       html: emailContent,
       attachments: req.files?.map(file => ({
